@@ -1,0 +1,610 @@
+
+ASEM-51 V1.3                                         Copyright (c) 2002 by W.W. Heinz                                         PAGE 1
+
+
+
+
+
+       MCS-51 Family Macro Assembler   A S E M - 5 1   V 1.3
+       =====================================================
+
+
+
+	Source File:	D:\Assembly\2B\FINALATTEMPT.asm
+	Object File:	D:\Assembly\2B\FINALATTEMPT.hex
+	List File:	D:\Assembly\2B\FINALATTEMPT.lst
+
+
+
+ Line  I  Addr  Code            Source
+
+    1:		N      0000	ORG 0H
+    2:				; SERVO REQUIRES A SIGNAL OF 50Hz WHICH IS 20ms.
+    3:				; Position "0" ( 1.5 ms of 20 ms pulse) turns in the middle.
+    4:				; Position "+90" ( 2ms of 20 ms pulse) turns all the way to the right.
+    5:				; Position "-90" ( 1ms of 20 ms pulse) turns all the way to the left.
+    6:				; Position "+45" ( 1.75ms of 20 ms pulse) turns half the way to the right.
+    7:				; Position "-45" ( 1.25ms of 20 ms pulse) turns half the way to the left.
+    8:		B      00A1	RS EQU P2.1
+    9:		B      00A2	RW EQU P2.2
+   10:		B      00A3	E EQU P2.3
+   11:		B      00A4	CSG EQU P2.4
+   12:		B      0081	PARK1 EQU P0.1
+   13:		B      0082	PARK2 EQU P0.2
+   14:		B      0083	PARK3 EQU P0.3
+   15:
+   16:				;LCD INITIALIZATION
+   17:
+   18:	  0000	74 38				MOV A, #00111000B	; INITIATE LCD #38H
+   19:	  0002	11 90				ACALL COMMANDWRT
+   20:	  0004	11 AA				ACALL DELAY
+   21:
+   22:	  0006	74 0E				MOV A, #00001110B	; DISPLAY ON CURSOR OFF #0CH
+   23:	  0008	11 90				ACALL COMMANDWRT
+   24:	  000A	11 AA				ACALL DELAY
+   25:
+   26:
+   27:
+   28:	  000C	74 01				MOV A, #00000001B	; CLEAR LCD #01H
+   29:	  000E	11 90				ACALL COMMANDWRT
+   30:	  0010	11 AA				ACALL DELAY
+   31:
+   32:				;PRINTING A STRING
+   33:
+   34:	  0012	90 03 00			MOV DPTR, #STRINGDATA1
+   35:	  0015	E4		STRING1:	CLR A
+   36:	  0016	93				MOVC A, @A+DPTR
+   37:	  0017	11 9D				ACALL DATAWRT
+   38:	  0019	11 B3				ACALL DELAYMSG
+   39:	  001B	A3				INC DPTR
+   40:
+   41:	  001C	70 F7				JNZ STRING1
+   42:
+   43:
+
+ASEM-51 V1.3                                         Copyright (c) 2002 by W.W. Heinz                                         PAGE 2
+
+
+
+ Line  I  Addr  Code            Source
+
+   44:
+   45:	  001E	31 08		ACALL PARKCHECK
+   46:
+   47:
+   48:
+   49:
+   50:
+   51:
+   52:
+   53:
+   54:
+   55:
+   56:
+   57:	  0020	20 80 FD	JB P0.0, $ ;not read in hardware
+   58:
+   59:
+   60:
+   61:
+   62:
+   63:
+   64:
+   65:
+   66:
+   67:	  0023	75 89 10	MOV TMOD, #00010000B ;TIMER 1, MODE 1 - 16BIT MODE
+   68:
+   69:	  0026			MAIN:
+   70:
+   71:	  0026	20 80 02	JB P0.0, CON1
+   72:
+   73:	  0029	80 05		SJMP TURN_LEFT_90
+   74:
+   75:	  002B			CON1:
+   76:	  002B	12 00 39	CALL CENTER_POS
+   77:	  002E	80 F6		SJMP MAIN
+   78:
+   79:	  0030			TURN_LEFT_90:
+   80:	  0030	11 BC		ACALL CLEARMSG
+   81:	  0032	D2 A4		SETB CSG
+   82:
+   83:	  0034	12 00 57	CALL LEFT_POS
+   84:	  0037	80 ED				SJMP MAIN
+   85:
+   86:
+   87:				;;;;;;;;;;;;;;;;;;SERVO POSITIONS;;;;;;;;;;;;;;;;;;;;;;
+   88:
+   89:	  0039			CENTER_POS:
+   90:				; Position "0" (1.5 ms  pulse) is middle.
+   91:				; High Part = 1.5ms
+   92:				; 1.5ms / (1 / 11.0592 MHz) = 1.5 ms / 1.085 탎 = 1382
+   93:				; 65536 - 1382 = 64154 Dec = FA9A Hex
+   94:				; Low Part = 18.5ms
+   95:				; 18.5ms / (1 / 11.0592 MHz) = 18.5 ms / 1.085 탎 = 17050
+   96:				; 65536 - 17050 = 48486 Dec = BD66 Hex
+   97:
+   98:
+   99:
+
+ASEM-51 V1.3                                         Copyright (c) 2002 by W.W. Heinz                                         PAGE 3
+
+
+
+ Line  I  Addr  Code            Source
+
+  100:
+  101:
+  102:	  0039	D2 A0			SETB P2.0
+  103:	  003B	75 8B B2		MOV TL1, #0B2H	;LET THIS VALUE = 0B2 FOR A PRECISE CENTER ANGLE AS MUCH AS POSSIBLE
+  104:	  003E	75 8D FA		MOV TH1, #0FAH   ;Puts it back to the center
+  105:	  0041	D2 8E			SETB TR1	; Run Timer
+  106:
+  107:	  0043	12 00 7C		CALL HIGH_SIGNAL
+  108:
+  109:	  0046	75 8B 66		MOV TL1, #66H
+  110:	  0049	75 8D BD		MOV TH1, #0BDH   ;	Allow it to turn
+  111:	  004C	D2 8E			SETB TR1	; Run Timer
+  112:
+  113:	  004E	12 00 86		CALL LOW_SIGNAL
+  114:	  0051	30 A4 02	JNB CSG,CONTINUE
+  115:	  0054	11 C3			ACALL STR3WRT
+  116:	  0056			CONTINUE:
+  117:
+  118:	  0056	22			RET
+  119:
+  120:	  0057			LEFT_POS:
+  121:				; Position "-90" (1 ms  pulse) is 90 degrees to the left.
+  122:				; High Part = 1 ms
+  123:				; 1 ms / (1 / 11.0592 MHz) = 1 ms / 1.085 탎 = 921
+  124:				; 65536 - 921 = 64615 Dec = FC67 Hex
+  125:				; Low Part = 19 ms
+  126:				; 19 ms / (1 / 11.0592 MHz) = 19 ms / 1.085 탎 = 17511
+  127:				; 65536 - 17511 = 48025 Dec = BB99 Hex
+  128:	  0057	11 BC				ACALL CLEARMSG
+  129:	  0059	90 03 0C			MOV DPTR, #STRINGDATA2
+  130:	  005C	E4		STRING2:	CLR A
+  131:	  005D	93				MOVC A, @A+DPTR
+  132:	  005E	11 9D				ACALL DATAWRT
+  133:	  0060	A3				INC DPTR
+  134:
+  135:
+  136:
+  137:	  0061	70 F9				JNZ STRING2
+  138:	  0063	11 BC				ACALL CLEARMSG
+  139:
+  140:
+  141:
+  142:	  0065	75 8B 7C		MOV TL1, #7CH	;LET THIS VALUE = 7C FOR A PRECISE -90 ANGLE
+  143:	  0068	75 8D FF		MOV TH1, #0FFH
+  144:	  006B	D2 8E			SETB TR1	; Run Timer
+  145:
+  146:	  006D	12 00 7C		CALL HIGH_SIGNAL
+  147:
+  148:	  0070	75 8B 99		MOV TL1, #99H
+  149:	  0073	75 8D BB		MOV TH1, #0BBH
+  150:	  0076	D2 8E			SETB TR1	; Run Timer
+  151:
+  152:	  0078	12 00 86		CALL LOW_SIGNAL
+  153:
+  154:
+  155:
+
+ASEM-51 V1.3                                         Copyright (c) 2002 by W.W. Heinz                                         PAGE 4
+
+
+
+ Line  I  Addr  Code            Source
+
+  156:
+  157:
+  158:
+  159:	  007B	22			RET
+  160:
+  161:
+  162:
+  163:				;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+  164:
+  165:				;;;;;;;;;;;;;;;;;;;;;;TIMER OF SIGNALS;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+  166:	  007C			HIGH_SIGNAL:
+  167:	  007C	30 8F FD		JNB TF1, $ 	;Wait till Timer overflow
+  168:	  007F	C2 8E			CLR TR1
+  169:	  0081	C2 A0			CLR P2.0	;HIGH TO LOW TRANSITION
+  170:	  0083	C2 8F			CLR TF1
+  171:	  0085	22			RET
+  172:
+  173:	  0086			LOW_SIGNAL:
+  174:	  0086	30 8F FD		JNB TF1, $ 	;Wait till Timer overflow
+  175:	  0089	C2 8E			CLR TR1
+  176:	  008B	D2 A0			SETB P2.0	;LOW TO HIGH TRANSITION
+  177:	  008D	C2 8F			CLR TF1
+  178:	  008F	22			RET
+  179:				;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+  180:
+  181:				;COMMAND SUB-ROUTINE FOR LCD CONTROL
+  182:	  0090			COMMANDWRT:
+  183:
+  184:	  0090	F5 90		    MOV P1, A ;SEND DATA TO P1
+  185:	  0092	C2 A1			CLR RS	;RS=0 FOR COMMAND
+  186:	  0094	C2 A2			CLR RW	;R/W=0 FOR WRITE
+  187:	  0096	D2 A3			SETB E	;E=1 FOR HIGH PULSE
+  188:	  0098	11 AA			ACALL DELAY ;SOME DELAY
+  189:	  009A	C2 A3			CLR E	;E=0 FOR H-L PULSE
+  190:
+  191:	  009C	22			RET
+  192:
+  193:				;SUBROUTINE FOR DATA LACTCHING TO LCD
+  194:	  009D			DATAWRT:
+  195:
+  196:	  009D	F5 90			MOV P1, A
+  197:	  009F	D2 A1		    	SETB RS	;;RS=1 FOR DATA
+  198:	  00A1	C2 A2		    	CLR RW
+  199:	  00A3	D2 A3		    	SETB E
+  200:	  00A5	11 AA			ACALL DELAY
+  201:	  00A7	C2 A3			CLR E
+  202:
+  203:	  00A9	22			RET
+  204:
+  205:
+  206:
+  207:	  00AA			DELAY:
+  208:	  00AA	78 FF			MOV R0, #255
+  209:	  00AC	79 FF		X:	MOV R1, #255
+  210:	  00AE	D9 FE			DJNZ R1, $
+  211:	  00B0	D8 FA			DJNZ R0, X
+
+ASEM-51 V1.3                                         Copyright (c) 2002 by W.W. Heinz                                         PAGE 5
+
+
+
+ Line  I  Addr  Code            Source
+
+  212:	  00B2	22			RET
+  213:
+  214:
+  215:	  00B3			DELAYMSG:
+  216:	  00B3	78 01		 	MOV R0, #1
+  217:	  00B5	79 01		Y:	MOV R1, #1
+  218:	  00B7	D9 FE			DJNZ R1, $
+  219:	  00B9	D8 FA			DJNZ R0, Y
+  220:	  00BB	22			RET
+  221:
+  222:	  00BC	74 01		CLEARMSG: MOV A, #00000001B	; CLEAR LCD #01H
+  223:	  00BE	11 90		ACALL COMMANDWRT
+  224:	  00C0	11 B3		ACALL DELAYMSG
+  225:	  00C2	22		RET
+  226:
+  227:	  00C3			STR3WRT:
+  228:	  00C3	C2 A4		CLR CSG
+  229:	  00C5	90 03 1A	MOV DPTR, #STRINGDATA3
+  230:
+  231:	  00C8	E4		STRING3:	CLR A
+  232:	  00C9	93				MOVC A, @A+DPTR
+  233:	  00CA	11 9D				ACALL DATAWRT
+  234:	  00CC	11 B3				ACALL DELAYMSG
+  235:	  00CE	A3				INC DPTR
+  236:
+  237:
+  238:	  00CF	70 F7				JNZ STRING3
+  239:	  00D1	31 08		ACALL PARKCHECK
+  240:
+  241:	  00D3	22		RET
+  242:
+  243:	  00D4			STR4WRT:
+  244:
+  245:	  00D4	90 03 26	MOV DPTR, #STRINGDATA4
+  246:	  00D7	E4		STRING4:	CLR A
+  247:	  00D8	93				MOVC A, @A+DPTR
+  248:	  00D9	11 9D				ACALL DATAWRT
+  249:	  00DB	11 B3				ACALL DELAYMSG
+  250:	  00DD	A3				INC DPTR
+  251:
+  252:
+  253:	  00DE	70 F7				JNZ STRING4
+  254:
+  255:	  00E0	22		RET
+  256:
+  257:	  00E1			STR5WRT:
+  258:
+  259:	  00E1	90 03 34	MOV DPTR, #STRINGDATA5
+  260:	  00E4	E4		STRING5:	CLR A
+  261:	  00E5	93				MOVC A, @A+DPTR
+  262:	  00E6	11 9D				ACALL DATAWRT
+  263:	  00E8	11 B3				ACALL DELAYMSG
+  264:	  00EA	A3				INC DPTR
+  265:
+  266:
+  267:	  00EB	70 F7				JNZ STRING5
+
+ASEM-51 V1.3                                         Copyright (c) 2002 by W.W. Heinz                                         PAGE 6
+
+
+
+ Line  I  Addr  Code            Source
+
+  268:
+  269:	  00ED	22		RET
+  270:
+  271:
+  272:
+  273:	  00EE			STR6WRT:
+  274:
+  275:	  00EE	90 03 42	MOV DPTR, #STRINGDATA6
+  276:	  00F1	E4		STRING6:	CLR A
+  277:	  00F2	93				MOVC A, @A+DPTR
+  278:	  00F3	11 9D				ACALL DATAWRT
+  279:	  00F5	11 B3				ACALL DELAYMSG
+  280:	  00F7	A3				INC DPTR
+  281:
+  282:
+  283:	  00F8	70 F7				JNZ STRING6
+  284:
+  285:	  00FA	22		RET
+  286:
+  287:
+  288:	  00FB			STR7WRT:
+  289:	  00FB	90 03 50		MOV DPTR, #STRINGDATA7
+  290:	  00FE	E4			STRING7:	CLR A
+  291:	  00FF	93				MOVC A, @A+DPTR
+  292:	  0100	11 9D				ACALL DATAWRT
+  293:	  0102	11 B3				ACALL DELAYMSG
+  294:	  0104	A3				INC DPTR
+  295:
+  296:
+  297:	  0105	70 F7				JNZ STRING7
+  298:
+  299:	  0107	22		RET
+  300:
+  301:	  0108			PARKCHECK:
+  302:
+  303:	  0108	74 C0		MOV A,#0C0H ;Goes to the second line
+  304:	  010A	11 90		ACALL COMMANDWRT
+  305:
+  306:				;0000 -> 0H
+  307:				;0010 -> 2H
+  308:				;0100 -> 4H
+  309:				;0110 -> 6H
+  310:				;1000 -> 8H
+  311:				;1010 -> AH
+  312:				;1100 -> CH
+  313:				;1110 -> EH
+  314:
+  315:
+  316:
+  317:	  010C	E5 80		MOV A,P0
+  318:	  010E	54 0E		ANL A,#00001110B
+  319:
+  320:
+  321:	  0110	B4 00 02	CJNE A,#0H,NEXT1 ;0000 000   0
+  322:	  0113	11 D4		ACALL STR4WRT
+  323:	  0115			NEXT1:
+
+ASEM-51 V1.3                                         Copyright (c) 2002 by W.W. Heinz                                         PAGE 7
+
+
+
+ Line  I  Addr  Code            Source
+
+  324:	  0115	B4 02 02	CJNE A,#2H,NEXT2 ;0000 001   0
+  325:	  0118	11 E1		ACALL STR5WRT
+  326:	  011A			NEXT2:
+  327:	  011A	B4 04 02	CJNE A,#4H,NEXT3 ;0000 010   0
+  328:	  011D	11 E1		ACALL STR5WRT
+  329:	  011F			NEXT3:
+  330:	  011F	B4 08 02	CJNE A,#8H,NEXT4 ;0000 100   0
+  331:	  0122	11 E1		ACALL STR5WRT
+  332:	  0124			NEXT4:
+  333:	  0124	B4 06 02	CJNE A,#6H,NEXT5 ;0000 011   0
+  334:	  0127	11 EE		ACALL STR6WRT
+  335:	  0129			NEXT5:
+  336:	  0129	B4 0A 02	CJNE A,#0AH,NEXT6 ;0000 101   0
+  337:	  012C	11 EE		ACALL STR6WRT
+  338:	  012E			NEXT6:
+  339:	  012E	B4 0C 02	CJNE A,#0CH,NEXT7 ; 0000 110   0
+  340:	  0131	11 EE		ACALL STR6WRT
+  341:	  0133			NEXT7:
+  342:	  0133	B4 0E 02	CJNE A,#0EH,NEXT8 ; 0000 111  0
+  343:	  0136	11 FB		ACALL STR7WRT
+  344:	  0138			NEXT8:
+  345:
+  346:	  0138	22		RET
+  347:
+  348:		N      0300	ORG 300H
+  349:
+  350:	  0300	57 65 6C 63	STRINGDATA1:	DB	"Welcome !!!" ,0
+	  0304	6F 6D 65 20
+	  0308	21 21 21 00
+  351:	  030C	47 61 74 65	STRINGDATA2:	DB	"Gate Opening " ,0
+	  0310	20 4F 70 65
+	  0314	6E 69 6E 67
+	  0318	20 00
+  352:	  031A	47 61 74 65	STRINGDATA3:	DB	"Gate Closed" ,0
+	  031E	20 43 6C 6F
+	  0322	73 65 64 00
+  353:	  0326	53 6C 6F 74	STRINGDATA4:	DB	"Slots Left: 3" ,0
+	  032A	73 20 4C 65
+	  032E	66 74 3A 20
+	  0332	33 00
+  354:	  0334	53 6C 6F 74	STRINGDATA5:	DB	"Slots Left: 2" ,0
+	  0338	73 20 4C 65
+	  033C	66 74 3A 20
+	  0340	32 00
+  355:	  0342	53 6C 6F 74	STRINGDATA6:	DB	"Slots Left: 1" ,0
+	  0346	73 20 4C 65
+	  034A	66 74 3A 20
+	  034E	31 00
+  356:	  0350	53 6C 6F 74	STRINGDATA7:	DB	"Slots Left: 0" ,0
+	  0354	73 20 4C 65
+	  0358	66 74 3A 20
+	  035C	30 00
+  357:
+  358:
+  359:
+  360:
+
+ASEM-51 V1.3                                         Copyright (c) 2002 by W.W. Heinz                                         PAGE 8
+
+
+
+ Line  I  Addr  Code            Source
+
+  361:
+  362:
+  363:				END
+
+
+
+
+
+                     register banks used:  ---
+
+                     no errors
+
+
+
+
+ASEM-51 V1.3                                         Copyright (c) 2002 by W.W. Heinz                                         PAGE 9
+
+
+
+
+
+	       L I S T   O F   S Y M B O L S
+	       =============================
+
+
+SYMBOL				  TYPE     VALUE	LINE
+------------------------------------------------------------
+??ASEM_51			  NUMBER    8051
+??VERSION			  NUMBER    0130
+AC				  BIT	      D6
+ACC				  DATA	      E0
+B				  DATA	      F0
+CENTER_POS			  CODE	    0039	  89
+CLEARMSG			  CODE	    00BC	 222
+COMMANDWRT			  CODE	    0090	 182
+CON1				  CODE	    002B	  75
+CONTINUE			  CODE	    0056	 116
+CSG				  NUMBER    00A4	  11
+CY				  BIT	      D7
+DATAWRT				  CODE	    009D	 194
+DELAY				  CODE	    00AA	 207
+DELAYMSG			  CODE	    00B3	 215
+DPH				  DATA	      83
+DPL				  DATA	      82
+E				  NUMBER    00A3	  10
+EA				  BIT	      AF
+ES				  BIT	      AC
+ET0				  BIT	      A9
+ET1				  BIT	      AB
+EX0				  BIT	      A8
+EX1				  BIT	      AA
+EXTI0				  CODE	    0003
+EXTI1				  CODE	    0013
+F0				  BIT	      D5
+HIGH_SIGNAL			  CODE	    007C	 166
+IE				  DATA	      A8
+IE0				  BIT	      89
+IE1				  BIT	      8B
+INT0				  BIT	      B2
+INT1				  BIT	      B3
+IP				  DATA	      B8
+IT0				  BIT	      88
+IT1				  BIT	      8A
+LEFT_POS			  CODE	    0057	 120
+LOW_SIGNAL			  CODE	    0086	 173
+MAIN				  CODE	    0026	  69
+NEXT1				  CODE	    0115	 323
+NEXT2				  CODE	    011A	 326
+NEXT3				  CODE	    011F	 329
+NEXT4				  CODE	    0124	 332
+NEXT5				  CODE	    0129	 335
+NEXT6				  CODE	    012E	 338
+NEXT7				  CODE	    0133	 341
+NEXT8				  CODE	    0138	 344
+OV				  BIT	      D2
+P				  BIT	      D0
+P0				  DATA	      80
+
+ASEM-51 V1.3                                        Copyright (c) 2002 by W.W. Heinz                                         PAGE 10
+
+
+
+SYMBOL				  TYPE     VALUE	LINE
+------------------------------------------------------------
+P1				  DATA	      90
+P2				  DATA	      A0
+P3				  DATA	      B0
+PARK1				  NUMBER    0081	  12
+PARK2				  NUMBER    0082	  13
+PARK3				  NUMBER    0083	  14
+PARKCHECK			  CODE	    0108	 301
+PCON				  DATA	      87
+PS				  BIT	      BC
+PSW				  DATA	      D0
+PT0				  BIT	      B9
+PT1				  BIT	      BB
+PX0				  BIT	      B8
+PX1				  BIT	      BA
+RB8				  BIT	      9A
+RD				  BIT	      B7
+REN				  BIT	      9C
+RESET				  CODE	    0000
+RI				  BIT	      98
+RS				  NUMBER    00A1	   8
+RS0				  BIT	      D3
+RS1				  BIT	      D4
+RW				  NUMBER    00A2	   9
+RXD				  BIT	      B0
+SBUF				  DATA	      99
+SCON				  DATA	      98
+SINT				  CODE	    0023
+SM0				  BIT	      9F
+SM1				  BIT	      9E
+SM2				  BIT	      9D
+SP				  DATA	      81
+STR3WRT				  CODE	    00C3	 227
+STR4WRT				  CODE	    00D4	 243
+STR5WRT				  CODE	    00E1	 257
+STR6WRT				  CODE	    00EE	 273
+STR7WRT				  CODE	    00FB	 288
+STRING1				  CODE	    0015	  35
+STRING2				  CODE	    005C	 130
+STRING3				  CODE	    00C8	 231
+STRING4				  CODE	    00D7	 246
+STRING5				  CODE	    00E4	 260
+STRING6				  CODE	    00F1	 276
+STRING7				  CODE	    00FE	 290
+STRINGDATA1			  CODE	    0300	 350
+STRINGDATA2			  CODE	    030C	 351
+STRINGDATA3			  CODE	    031A	 352
+STRINGDATA4			  CODE	    0326	 353
+STRINGDATA5			  CODE	    0334	 354
+STRINGDATA6			  CODE	    0342	 355
+STRINGDATA7			  CODE	    0350	 356
+T0				  BIT	      B4
+T1				  BIT	      B5
+TB8				  BIT	      9B
+TCON				  DATA	      88
+TF0				  BIT	      8D
+TF1				  BIT	      8F
+
+ASEM-51 V1.3                                        Copyright (c) 2002 by W.W. Heinz                                         PAGE 11
+
+
+
+SYMBOL				  TYPE     VALUE	LINE
+------------------------------------------------------------
+TH0				  DATA	      8C
+TH1				  DATA	      8D
+TI				  BIT	      99
+TIMER0				  CODE	    000B
+TIMER1				  CODE	    001B
+TL0				  DATA	      8A
+TL1				  DATA	      8B
+TMOD				  DATA	      89
+TR0				  BIT	      8C
+TR1				  BIT	      8E
+TURN_LEFT_90			  CODE	    0030	  79
+TXD				  BIT	      B1
+WR				  BIT	      B6
+X				  CODE	    00AC	 209
+Y				  CODE	    00B5	 217
